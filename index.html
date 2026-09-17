@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Battlefield Chess v0.17</title>
+<title>Battlefield Chess v0.17.1</title>
 <meta name="theme-color" content="#15120f" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -79,7 +79,7 @@ button:disabled{opacity:.35}
 </head>
 <body><div class="app">
 <div class="bar">
-  <div class="turns" aria-label="Turn indicator"><span id="turnN" class="turnMark north">N</span><span id="turnC" class="turnMark south">S</span></div>
+  <div class="turns" aria-label="Turn indicator"><span id="turnN" class="turnMark north">N</span><span id="turnS" class="turnMark south">S</span></div>
   <div id="clock" class="clock" aria-label="Match timer">02:00.0</div>
   <button id="menuBtn" aria-label="Open menu">☰</button>
 </div>
@@ -211,6 +211,5 @@ $('pass').onclick=()=>{if(menuOpen||G.turn!=='S'||G.thinking||G.winner||G.draw||
 $('menuBtn').onclick=openMenu;$('resumeBtn').onclick=closeMenu;$('restartBtn').onclick=resetMatch;$('rulesBtn').onclick=()=>showMenuView('rulesView');$('piecesBtn').onclick=()=>showMenuView('piecesView');$('statsBtn').onclick=()=>{renderStats();showMenuView('statsView')};for(const b of document.querySelectorAll('.backBtn'))b.onclick=()=>showMenuView('menuHome');
 buildHelp();renderStats();G=fresh();begin('S');render();focusSouth();startClock();
 window.addEventListener('resize',fitBoard);if(window.visualViewport)window.visualViewport.addEventListener('resize',fitBoard);
-if('serviceWorker' in navigator7)window.addEventListener('Road',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
-serviceWorker.register('./sw.js').catch(()=>{}));
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 </script></body></html>
