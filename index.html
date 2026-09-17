@@ -27,7 +27,7 @@
 </style>
 </head>
 <body><div class="app">
-<div class="bar"><div class="title"><b>Battlefield Chess</b><div id="status" class="small">v0.14 — timed match</div></div><div id="clock" class="clock">01:30.0</div><button id="undo">Undo</button><button id="pass">Pass</button><button id="menuBtn" aria-label="Open menu">☰</button></div>
+<div class="bar"><div class="title"><b>Battlefield Chess</b><div id="status" class="small">v0.14 — timed match</div></div><div id="clock" class="clock">02:00.0</div><button id="undo">Undo</button><button id="pass">Pass</button><button id="menuBtn" aria-label="Open menu">☰</button></div>
 <div class="hud"><div class="card"><b>North</b><div id="nroster" class="small"></div><div id="nstate" class="small"></div></div><div class="card"><b>South — You</b><div id="sroster" class="small"></div><div id="sstate" class="small"></div></div></div>
 <div id="frontmsg" class="frontmsg"></div>
 <div class="info"><b id="turn">Your turn — South</b><div id="info" class="small">Tap a blue token.</div></div>
@@ -36,7 +36,7 @@
 </div>
 <div id="menuOverlay" class="menuOverlay hidden" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
   <section class="menuPanel">
-    <div class="menuHead"><h2 id="menuTitle">Battlefield Chess <span class="pausedTag">PAUSED</span></h2><div id="menuClock" class="clock">01:30.0</div></div>
+    <div class="menuHead"><h2 id="menuTitle">Battlefield Chess <span class="pausedTag">PAUSED</span></h2><div id="menuClock" class="clock">02:00.0</div></div>
     <div id="menuHome" class="menuView">
       <div class="menuActions">
         <button id="resumeBtn" class="wide">Resume</button>
@@ -71,7 +71,7 @@ const ICON={
 };
 let G,H=[],aiTimer=null;
 const $=id=>document.getElementById(id),board=$('board');
-const LIMIT_MS=90000,STATS_KEY='bfchess.stats.v1';
+const LIMIT_MS=120000,STATS_KEY='bfchess.stats.v1';
 let remainingMs=LIMIT_MS,clockTimer=null,clockLast=0,menuOpen=false,resultLogged=false;
 const PIECE_MAS={
  commander:{M:'1 square in any of 8 directions.',A:'Capture by moving onto an adjacent enemy.',S:'Confined to your own Inner Camp.'},
@@ -99,7 +99,7 @@ function openMenu(){if(menuOpen)return;menuOpen=true;pauseClock();if(aiTimer){cl
 function closeMenu(){if(!menuOpen)return;menuOpen=false;$('menuOverlay').classList.add('hidden');startClock();if(G.thinking&&!G.winner&&!G.draw&&!aiTimer)aiTimer=setTimeout(ai,220)}
 function resetMatch(){clearTimeout(aiTimer);aiTimer=null;clearInterval(clockTimer);clockTimer=null;H=[];G=fresh();begin('S');remainingMs=LIMIT_MS;resultLogged=false;menuOpen=false;$('menuOverlay').classList.add('hidden');render();focusSouth();startClock()}
 function buildHelp(){
- $('rulesContent').innerHTML=`<div class="ruleBlock"><h3>Objective</h3><p>Win before 1:30. A timeout is a loss. The menu pauses the game clock.</p></div><div class="ruleBlock"><h3>Army composition</h3><p>Each army has exactly one Commander and one Guard, at least one Gate-breaching unit, and no more than three copies of any other piece type.</p></div><div class="ruleBlock"><h3>Three ways to win</h3><p>Capture the enemy Commander; eliminate every enemy non-Commander unit; or maintain enemy superiority inside the enemy Inner Camp across two starts of that defender’s turns.</p></div><div class="ruleBlock"><h3>Battlefield combat</h3><p>Most ordinary captures only happen on the muddy Front Lines, in Camps, or on Gate squares. Infantry can fight in open Field. Spies convert in open Field.</p></div><div class="ruleBlock"><h3>Front Lines</h3><p>Your own units never block your crossing. If an enemy occupies any Front Line row, your side cannot cross fully into the enemy half until that presence is removed. If both sides occupy the Front, both are blocked.</p></div><div class="ruleBlock"><h3>Gates</h3><p>Intact enemy Gates block ordinary entry. Siege and Elephant can breach them permanently. Archer fire passes over Gates.</p></div><div class="ruleBlock"><h3>Draw</h3><p>A draw occurs when neither side can ever breach the opposing Gate: its target Gate is still intact and that side has no surviving Siege or Elephant.</p></div>`;
+ $('rulesContent').innerHTML=`<div class="ruleBlock"><h3>Objective</h3><p>Win before 2:00. A timeout is a loss. The menu pauses the game clock.</p></div><div class="ruleBlock"><h3>Army composition</h3><p>Each army has exactly one Commander and one Guard, at least one Gate-breaching unit, and no more than three copies of any other piece type.</p></div><div class="ruleBlock"><h3>Three ways to win</h3><p>Capture the enemy Commander; eliminate every enemy non-Commander unit; or maintain enemy superiority inside the enemy Inner Camp across two starts of that defender’s turns.</p></div><div class="ruleBlock"><h3>Battlefield combat</h3><p>Most ordinary captures only happen on the muddy Front Lines, in Camps, or on Gate squares. Infantry can fight in open Field. Spies convert in open Field.</p></div><div class="ruleBlock"><h3>Front Lines</h3><p>Your own units never block your crossing. If an enemy occupies any Front Line row, your side cannot cross fully into the enemy half until that presence is removed. If both sides occupy the Front, both are blocked.</p></div><div class="ruleBlock"><h3>Gates</h3><p>Intact enemy Gates block ordinary entry. Siege and Elephant can breach them permanently. Archer fire passes over Gates.</p></div><div class="ruleBlock"><h3>Draw</h3><p>A draw occurs when neither side can ever breach the opposing Gate: its target Gate is still intact and that side has no surviving Siege or Elephant.</p></div>`;
  $('pieceRules').innerHTML=Object.keys(PIECE_MAS).map(t=>`<article class="pieceRule"><b>${N[t]}</b><dl><dt>M</dt><dd>${PIECE_MAS[t].M}</dd><dt>A</dt><dd>${PIECE_MAS[t].A}</dd><dt>S</dt><dd>${PIECE_MAS[t].S}</dd></dl></article>`).join('');
 }
 

@@ -1,4 +1,4 @@
-const CACHE='bfchess-v016';
+const CACHE='bfchess-v017';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./icon.svg','./v015.css','./v015.js'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
