@@ -23,12 +23,28 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Build v0.15 Pages bundle
+        run: |
+          mkdir -p _site
+          cp index.html manifest.webmanifest icon.svg sw.js v015.css v015.js .nojekyll _site/
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('_site/index.html')
+          s = p.read_text()
+          s = s.replace('</head>', '<link rel="stylesheet" href="v015.css" />\n</head>', 1)
+          s = s.replace('</body>', '<script src="v015.js"></script>\n</body>', 1)
+          p.write_text(s)
+          PY
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
       - name: Upload site
         uses: actions/upload-pages-artifact@v4
         with:
-          path: .
+          path: _site
+
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
