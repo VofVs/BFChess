@@ -1,0 +1,66 @@
+name: One-shot BFChess v0.18 stopwatch migration
+
+on:
+  push:
+    paths:
+      - '.github/workflows/stopwatch-v018.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Convert countdown to stopwatch
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('index.html')
+          s = p.read_text()
+
+          replacements = [
+            ('<title>Battlefield Chess v0.17.1</title>', '<title>Battlefield Chess v0.18</title>'),
+            ('<div id="clock" class="clock" aria-label="Match timer">02:00.0</div>', '<div id="clock" class="clock" aria-label="Match timer">00:00.0</div>'),
+            ('<div id="menuClock" class="clock">02:00.0</div>', '<div id="menuClock" class="clock">00:00.0</div>'),
+            ("const LIMIT_MS=120000,STATS_KEY='bfchess.stats.v1';", "const STATS_KEY='bfchess.stats.v1';"),
+            ('let remainingMs=LIMIT_MS,clockTimer=null,clockLast=0,menuOpen=false,resultLogged=false;', 'let matchMs=0,clockTimer=null,clockLast=0,menuOpen=false,resultLogged=false;'),
+            ('function elapsedMs(){return LIMIT_MS-remainingMs}', 'function elapsedMs(){return matchMs}'),
+            ('ms=Math.min(LIMIT_MS,Math.max(0,elapsedMs()))', 'ms=Math.max(0,elapsedMs())'),
+            ("function paintClock(){let txt=fmtTime(remainingMs);$('clock').textContent=txt;$('menuClock').textContent=txt;$('clock').classList.toggle('danger',remainingMs<=15000);$('menuClock').classList.toggle('danger',remainingMs<=15000)}", "function paintClock(){let txt=fmtTime(matchMs);$('clock').textContent=txt;$('menuClock').textContent=txt;$('clock').classList.remove('danger');$('menuClock').classList.remove('danger')}"),
+            ("function clockStep(){if(menuOpen||G.winner||G.draw)return;let now=Date.now();if(clockLast)remainingMs-=now-clockLast;clockLast=now;if(remainingMs<=0){remainingMs=0;clearInterval(clockTimer);clockTimer=null;clearTimeout(aiTimer);aiTimer=null;G.thinking=false;G.winner='N';G.msg='Time expired — North wins.';recordResult();render()}paintClock()}", "function clockStep(){if(menuOpen||G.winner||G.draw)return;let now=Date.now();if(clockLast)matchMs+=Math.max(0,now-clockLast);clockLast=now;paintClock()}"),
+            ('function pauseClock(){clockStep();clearInterval(clockTimer);clockTimer=null;clockLast=0}', "function pauseClock(){if(clockLast){let now=Date.now();matchMs+=Math.max(0,now-clockLast)}clearInterval(clockTimer);clockTimer=null;clockLast=0;paintClock()}"),
+            ('remainingMs=LIMIT_MS;resultLogged=false;', 'matchMs=0;resultLogged=false;'),
+            ('<h3>Objective</h3><p>Win before 2:00. A timeout is a loss. The menu pauses the game clock.</p>', '<h3>Objective</h3><p>The clock is a stopwatch, not a loss condition. It counts upward for match records and pauses while the menu is open.</p>'),
+            ("msg:'v0.17 — 120 seconds. Win before the clock hits zero.'", "msg:'v0.18 — stopwatch mode. Win by the board, not the clock.'"),
+          ]
+
+          for old, new in replacements:
+            if old not in s:
+              raise SystemExit(f'Missing expected source chunk: {old[:100]}')
+            s = s.replace(old, new, 1)
+
+          p.write_text(s)
+
+          sw = Path('sw.js')
+          sws = sw.read_text()
+          if "const CACHE='bfchess-v0171-hotfix';" not in sws:
+            raise SystemExit('Unexpected service worker cache version')
+          sw.write_text(sws.replace("const CACHE='bfchess-v0171-hotfix';", "const CACHE='bfchess-v018-stopwatch';", 1))
+
+          readme = Path('README.md')
+          r = readme.read_text()
+          old = 'Current build: **v0.17** — full-board iPhone UI, 2-minute match clock, pause menu, rules/M·A·S reference, persistent personal best and W/L/D stats, three-piece army cap, and improved North deployment behavior.'
+          new = 'Current build: **v0.18** — full-board iPhone UI, upward-counting match stopwatch, pause menu, rules/M·A·S reference, persistent personal best and W/L/D stats, three-piece army cap, and improved North deployment behavior.'
+          if old in r:
+            r = r.replace(old, new, 1)
+          readme.write_text(r)
+      - name: Commit migration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html sw.js README.md
+          git commit -m "BFChess v0.18: replace countdown with stopwatch"
+          git push
