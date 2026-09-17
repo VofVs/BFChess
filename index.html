@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Battlefield Chess v0.17.1</title>
+<title>Battlefield Chess v0.18</title>
 <meta name="theme-color" content="#15120f" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -80,7 +80,7 @@ button:disabled{opacity:.35}
 <body><div class="app">
 <div class="bar">
   <div class="turns" aria-label="Turn indicator"><span id="turnN" class="turnMark north">N</span><span id="turnS" class="turnMark south">S</span></div>
-  <div id="clock" class="clock" aria-label="Match timer">02:00.0</div>
+  <div id="clock" class="clock" aria-label="Match timer">00:00.0</div>
   <button id="menuBtn" aria-label="Open menu">☰</button>
 </div>
 <div id="scene" class="scene">
@@ -93,7 +93,7 @@ button:disabled{opacity:.35}
 </div>
 <div id="menuOverlay" class="menuOverlay hidden" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
   <section class="menuPanel">
-    <div class="menuHead"><h2 id="menuTitle">Battlefield Chess <span class="pausedTag">PAUSED</span></h2><div id="menuClock" class="clock">02:00.0</div></div>
+    <div class="menuHead"><h2 id="menuTitle">Battlefield Chess <span class="pausedTag">PAUSED</span></h2><div id="menuClock" class="clock">00:00.0</div></div>
     <div id="menuHome" class="menuView">
       <div class="menuActions">
         <button id="resumeBtn" class="wide">Resume</button>
@@ -130,8 +130,8 @@ const ICON={
 };
 let G,H=[],aiTimer=null;
 const $=id=>document.getElementById(id),board=$('board');
-const LIMIT_MS=120000,STATS_KEY='bfchess.stats.v1';
-let remainingMs=LIMIT_MS,clockTimer=null,clockLast=0,menuOpen=false,resultLogged=false;
+const STATS_KEY='bfchess.stats.v1';
+let matchMs=0,clockTimer=null,clockLast=0,menuOpen=false,resultLogged=false;
 const PIECE_MAS={
  commander:{M:'1 square in any of 8 directions.',A:'Capture by moving onto an adjacent enemy.',S:'Confined to your own Inner Camp.'},
  guard:{M:'1 square cardinally (N/S/E/W).',A:'Capture by moving onto an adjacent cardinal enemy.',S:'Confined to your own Inner Camp.'},
@@ -146,19 +146,19 @@ const PIECE_MAS={
 function fmtTime(ms){ms=Math.max(0,ms);let total=Math.floor(ms/100),tenths=total%10,sec=Math.floor(total/10)%60,min=Math.floor(total/600);return String(min).padStart(2,'0')+':'+String(sec).padStart(2,'0')+'.'+tenths}
 function readStats(){try{return JSON.parse(localStorage.getItem(STATS_KEY))||{wins:0,losses:0,draws:0,bestMs:null,recent:[]}}catch(e){return{wins:0,losses:0,draws:0,bestMs:null,recent:[]}}}
 function writeStats(x){try{localStorage.setItem(STATS_KEY,JSON.stringify(x))}catch(e){}}
-function elapsedMs(){return LIMIT_MS-remainingMs}
-function recordResult(){if(resultLogged||(!G.winner&&!G.draw))return;resultLogged=true;let st=readStats(),result=G.draw?'draw':G.winner==='S'?'win':'loss',ms=Math.min(LIMIT_MS,Math.max(0,elapsedMs()));if(result==='win'){st.wins++;if(st.bestMs==null||ms<st.bestMs)st.bestMs=ms}else if(result==='loss')st.losses++;else st.draws++;st.recent=Array.isArray(st.recent)?st.recent:[];st.recent.unshift({result,ms,at:Date.now()});st.recent=st.recent.slice(0,12);writeStats(st);renderStats()}
+function elapsedMs(){return matchMs}
+function recordResult(){if(resultLogged||(!G.winner&&!G.draw))return;resultLogged=true;let st=readStats(),result=G.draw?'draw':G.winner==='S'?'win':'loss',ms=Math.max(0,elapsedMs());if(result==='win'){st.wins++;if(st.bestMs==null||ms<st.bestMs)st.bestMs=ms}else if(result==='loss')st.losses++;else st.draws++;st.recent=Array.isArray(st.recent)?st.recent:[];st.recent.unshift({result,ms,at:Date.now()});st.recent=st.recent.slice(0,12);writeStats(st);renderStats()}
 function renderStats(){let st=readStats(),recent=(st.recent||[]).slice(0,8).map(x=>`${x.result.toUpperCase()} — ${fmtTime(x.ms)}`).join('<br>')||'No completed matches yet.';$('statsContent').innerHTML=`<h3>Record</h3><div class="statsGrid"><div class="statBox"><strong>${st.wins||0}</strong><span>Victories</span></div><div class="statBox"><strong>${st.losses||0}</strong><span>Losses</span></div><div class="statBox"><strong>${st.draws||0}</strong><span>Draws</span></div></div><div class="pb"><b>Personal Best</b><br>${st.bestMs==null?'—':fmtTime(st.bestMs)} <span class="small">fastest victory</span></div><div class="recent"><b>Recent matches</b><br>${recent}</div>`}
-function paintClock(){let txt=fmtTime(remainingMs);$('clock').textContent=txt;$('menuClock').textContent=txt;$('clock').classList.toggle('danger',remainingMs<=15000);$('menuClock').classList.toggle('danger',remainingMs<=15000)}
-function clockStep(){if(menuOpen||G.winner||G.draw)return;let now=Date.now();if(clockLast)remainingMs-=now-clockLast;clockLast=now;if(remainingMs<=0){remainingMs=0;clearInterval(clockTimer);clockTimer=null;clearTimeout(aiTimer);aiTimer=null;G.thinking=false;G.winner='N';G.msg='Time expired — North wins.';recordResult();render()}paintClock()}
+function paintClock(){let txt=fmtTime(matchMs);$('clock').textContent=txt;$('menuClock').textContent=txt;$('clock').classList.remove('danger');$('menuClock').classList.remove('danger')}
+function clockStep(){if(menuOpen||G.winner||G.draw)return;let now=Date.now();if(clockLast)matchMs+=Math.max(0,now-clockLast);clockLast=now;paintClock()}
 function startClock(){if(menuOpen||G.winner||G.draw)return;clearInterval(clockTimer);clockLast=Date.now();clockTimer=setInterval(clockStep,100);paintClock()}
-function pauseClock(){clockStep();clearInterval(clockTimer);clockTimer=null;clockLast=0}
+function pauseClock(){if(clockLast){let now=Date.now();matchMs+=Math.max(0,now-clockLast)}clearInterval(clockTimer);clockTimer=null;clockLast=0;paintClock()}
 function showMenuView(id){for(const v of document.querySelectorAll('.menuView'))v.classList.add('hidden');$(id).classList.remove('hidden')}
 function openMenu(){if(menuOpen)return;menuOpen=true;pauseClock();if(aiTimer){clearTimeout(aiTimer);aiTimer=null}$('menuOverlay').classList.remove('hidden');showMenuView('menuHome');renderStats()}
 function closeMenu(){if(!menuOpen)return;menuOpen=false;$('menuOverlay').classList.add('hidden');startClock();if(G.thinking&&!G.winner&&!G.draw&&!aiTimer)aiTimer=setTimeout(ai,220)}
-function resetMatch(){clearTimeout(aiTimer);aiTimer=null;clearInterval(clockTimer);clockTimer=null;H=[];G=fresh();begin('S');remainingMs=LIMIT_MS;resultLogged=false;menuOpen=false;$('menuOverlay').classList.add('hidden');render();focusSouth();startClock()}
+function resetMatch(){clearTimeout(aiTimer);aiTimer=null;clearInterval(clockTimer);clockTimer=null;H=[];G=fresh();begin('S');matchMs=0;resultLogged=false;menuOpen=false;$('menuOverlay').classList.add('hidden');render();focusSouth();startClock()}
 function buildHelp(){
- $('rulesContent').innerHTML=`<div class="ruleBlock"><h3>Objective</h3><p>Win before 2:00. A timeout is a loss. The menu pauses the game clock.</p></div><div class="ruleBlock"><h3>Army composition</h3><p>Each army has exactly one Commander and one Guard, at least one Gate-breaching unit, and no more than three copies of any other piece type.</p></div><div class="ruleBlock"><h3>Three ways to win</h3><p>Capture the enemy Commander; eliminate every enemy non-Commander unit; or maintain enemy superiority inside the enemy Inner Camp across two starts of that defender’s turns.</p></div><div class="ruleBlock"><h3>Battlefield combat</h3><p>Most ordinary captures only happen on the muddy Front Lines, in Camps, or on Gate squares. Infantry can fight in open Field. Spies convert in open Field.</p></div><div class="ruleBlock"><h3>Front Lines</h3><p>Your own units never block your crossing. If an enemy occupies any Front Line row, your side cannot cross fully into the enemy half until that presence is removed. If both sides occupy the Front, both are blocked.</p></div><div class="ruleBlock"><h3>Gates</h3><p>Intact enemy Gates block ordinary entry. Siege and Elephant can breach them permanently. Archer fire passes over Gates.</p></div><div class="ruleBlock"><h3>Draw</h3><p>A draw occurs when neither side can ever breach the opposing Gate: its target Gate is still intact and that side has no surviving Siege or Elephant.</p></div>`;
+ $('rulesContent').innerHTML=`<div class="ruleBlock"><h3>Objective</h3><p>The clock is a stopwatch, not a loss condition. It counts upward for match records and pauses while the menu is open.</p></div><div class="ruleBlock"><h3>Army composition</h3><p>Each army has exactly one Commander and one Guard, at least one Gate-breaching unit, and no more than three copies of any other piece type.</p></div><div class="ruleBlock"><h3>Three ways to win</h3><p>Capture the enemy Commander; eliminate every enemy non-Commander unit; or maintain enemy superiority inside the enemy Inner Camp across two starts of that defender’s turns.</p></div><div class="ruleBlock"><h3>Battlefield combat</h3><p>Most ordinary captures only happen on the muddy Front Lines, in Camps, or on Gate squares. Infantry can fight in open Field. Spies convert in open Field.</p></div><div class="ruleBlock"><h3>Front Lines</h3><p>Your own units never block your crossing. If an enemy occupies any Front Line row, your side cannot cross fully into the enemy half until that presence is removed. If both sides occupy the Front, both are blocked.</p></div><div class="ruleBlock"><h3>Gates</h3><p>Intact enemy Gates block ordinary entry. Siege and Elephant can breach them permanently. Archer fire passes over Gates.</p></div><div class="ruleBlock"><h3>Draw</h3><p>A draw occurs when neither side can ever breach the opposing Gate: its target Gate is still intact and that side has no surviving Siege or Elephant.</p></div>`;
  $('pieceRules').innerHTML=Object.keys(PIECE_MAS).map(t=>`<article class="pieceRule"><b>${N[t]}</b><dl><dt>M</dt><dd>${PIECE_MAS[t].M}</dd><dt>A</dt><dd>${PIECE_MAS[t].A}</dd><dt>S</dt><dd>${PIECE_MAS[t].S}</dd></dl></article>`).join('');
 }
 
@@ -187,7 +187,7 @@ function actions(p){if(G.winner||G.draw)return[];let out=[],x=ctx(p),f=x.S.dir;
  return out}
 function army(target){let a=['guard'],b=Math.random()<.5?'siege':'elephant';a.push(b);let total=V.guard+V[b],count={guard:1,[b]:1};while(total<target-2&&a.length<15){let o=TYPES.filter(t=>{count[t]=count[t]||0;return count[t]<CAP[t]&&total+V[t]<=target+2});if(!o.length)break;let t=o[Math.floor(Math.random()*o.length)];a.push(t);count[t]++;total+=V[t]}return{a,total}}
 function place(s,types,pieces){let occ=new Set(pieces.map(p=>p.r+','+p.c)),put=(t,r,c)=>{if(active(r,c)&&!occ.has(r+','+c)){pieces.push(mk(s,t,r,c));occ.add(r+','+c);return true}},all=[];for(let d=0;d<5;d++)for(let c=2;c<=6;c++)all.push([row(s,d),c]);let slot=list=>list.find(([r,c])=>!occ.has(r+','+c))||all.find(([r,c])=>!occ.has(r+','+c));put('commander',row(s,4),4);types.filter(t=>t==='guard').forEach(t=>{let q=slot([[row(s,3),3],[row(s,3),5],[row(s,2),3],[row(s,2),5]]);if(q)put(t,...q)});types.filter(t=>t==='siege').forEach(t=>{let q=slot([[row(s,0),4],[row(s,1),4],[row(s,2),4]]);if(q)put(t,...q)});types.filter(t=>t!=='guard'&&t!=='siege').forEach(t=>{let opts=[];for(let d=0;d<5;d++)for(const c of [3,5,2,6,4])opts.push([row(s,d),c]);let q=slot(opts);if(q)put(t,...q)})}
-function fresh(){let t=48+Math.floor(Math.random()*13),n=army(t),s=army(t),p=[];place('N',n.a,p);place('S',s.a,p);return{pieces:p,turn:'S',selected:null,winner:null,draw:false,thinking:false,breached:{N:false,S:false},pressure:{N:false,S:false},value:{N:n.total,S:s.total},msg:'v0.17 — 120 seconds. Win before the clock hits zero.'}}
+function fresh(){let t=48+Math.floor(Math.random()*13),n=army(t),s=army(t),p=[];place('N',n.a,p);place('S',s.a,p);return{pieces:p,turn:'S',selected:null,winner:null,draw:false,thinking:false,breached:{N:false,S:false},pressure:{N:false,S:false},value:{N:n.total,S:s.total},msg:'v0.18 — stopwatch mode. Win by the board, not the clock.'}}
 function breachable(s){return G.breached[SIDE[s].enemy]||G.pieces.some(p=>p.side===s&&(p.type==='siege'||p.type==='elephant'))}
 function end(){for(const s of ['N','S'])if(!G.pieces.some(p=>p.side===s&&p.type==='commander')){G.winner=SIDE[s].enemy;G.msg=SIDE[G.winner].name+' wins — Commander captured.';return true}for(const s of ['N','S'])if(!G.pieces.some(p=>p.side===s&&p.type!=='commander')){G.winner=SIDE[s].enemy;G.msg=SIDE[G.winner].name+' wins — army eliminated.';return true}if(!breachable('N')&&!breachable('S')){G.draw=true;G.msg='Draw — neither side can breach.';return true}return false}
 function begin(s){if(G.winner||G.draw)return;G.turn=s;let x=sideState(s);if(x.pressure){if(G.pressure[s]){G.winner=x.E.id;G.msg=x.E.name+' wins — '+x.S.name+' Camp overrun.';return}G.pressure[s]=true;G.msg=x.S.name+' Camp under Overrun Pressure.'}else G.pressure[s]=false}

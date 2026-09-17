@@ -1,4 +1,4 @@
-const CACHE='bfchess-v0171-hotfix';
+const CACHE='bfchess-v018-stopwatch';
 const CORE=['./','./index.html','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(Promise.all([
