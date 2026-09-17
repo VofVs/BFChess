@@ -1,0 +1,46 @@
+name: Assemble Battlefield Chess v0.17
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/assemble-v017.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Rebuild exact v0.17
+        shell: bash
+        run: |
+          cat .upload-v017/part* | base64 -d > index.html
+          grep -q 'Battlefield Chess v0.17' index.html
+          grep -q 'const LIMIT_MS=120000' index.html
+          grep -q "const CAP={infantry:3,cavalry:3,chariot:3,archer:3,spy:3,elephant:3,siege:3};" index.html
+          grep -q 'function fitBoard()' index.html
+          grep -q 'let gateExit=' index.html
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('sw.js')
+          s=p.read_text()
+          s=re.sub(r"const CACHE='bfchess-v\d+';", "const CACHE='bfchess-v017';", s)
+          p.write_text(s)
+          PY
+      - name: Commit final v0.17
+        shell: bash
+        run: |
+          git config user.name "VofVs"
+          git config user.email "vynnilucien@gmail.com"
+          git rm -r .upload-v017
+          git rm .github/workflows/assemble-v017.yml
+          git add index.html sw.js
+          git commit -m "BFChess v0.17: full-board UI, aggressive North, 3-piece cap, two-minute matches"
+          git push origin main
