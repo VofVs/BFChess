@@ -1,0 +1,19 @@
+{
+  "name": "Battlefield Chess",
+  "short_name": "BF Chess",
+  "description": "Fast deterministic battlefield strategy against the North AI.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#15120f",
+  "theme_color": "#15120f",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
