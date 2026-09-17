@@ -1,4 +1,4 @@
-name: Apply v0.16 AI and army-cap patch
+name: Finalize v0.17 timer update
 
 on:
   push:
@@ -17,42 +17,29 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Patch v0.16
+      - name: Extend match to two minutes
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
           p=Path('index.html')
           text=p.read_text()
-          text=text.replace('<title>Battlefield Chess v0.15</title>','<title>Battlefield Chess v0.16</title>')
-          text=text.replace("const CAP={infantry:7,cavalry:3,chariot:3,archer:4,spy:2,elephant:3,siege:2};","const CAP={infantry:3,cavalry:3,chariot:3,archer:3,spy:3,elephant:3,siege:3};")
-          text=text.replace("msg:'v0.15 — 90 seconds. Win before the clock hits zero.'","msg:'v0.16 — 90 seconds. Win before the clock hits zero.'")
-          old="""$('rulesContent').innerHTML=`<div class=\"ruleBlock\"><h3>Objective</h3><p>Win before 1:30. A timeout is a loss. The menu pauses the game clock.</p></div><div class=\"ruleBlock\"><h3>Three ways to win</h3><p>Capture the enemy Commander; eliminate every enemy non-Commander unit; or maintain enemy superiority inside the enemy Inner Camp across two starts of that defender’s turns.</p></div><div class=\"ruleBlock\"><h3>Battlefield combat</h3><p>Most ordinary captures only happen on the muddy Front Lines, in Camps, or on Gate squares. Infantry can fight in open Field. Spies convert in open Field.</p></div><div class=\"ruleBlock\"><h3>Front Lines</h3><p>Your own units never block your crossing. If an enemy occupies any Front Line row, your side cannot cross fully into the enemy half until that presence is removed. If both sides occupy the Front, both are blocked.</p></div><div class=\"ruleBlock\"><h3>Gates</h3><p>Intact enemy Gates block ordinary entry. Siege and Elephant can breach them permanently. Archer fire passes over Gates.</p></div><div class=\"ruleBlock\"><h3>Draw</h3><p>A draw occurs when neither side can ever breach the opposing Gate: its target Gate is still intact and that side has no surviving Siege or Elephant.</p></div>`;"""
-          new="""$('rulesContent').innerHTML=`<div class=\"ruleBlock\"><h3>Objective</h3><p>Win before 1:30. A timeout is a loss. The menu pauses the game clock.</p></div><div class=\"ruleBlock\"><h3>Army composition</h3><p>Each army has exactly one Commander and one Guard, at least one Gate-breaching unit, and no more than three copies of any other piece type.</p></div><div class=\"ruleBlock\"><h3>Three ways to win</h3><p>Capture the enemy Commander; eliminate every enemy non-Commander unit; or maintain enemy superiority inside the enemy Inner Camp across two starts of that defender’s turns.</p></div><div class=\"ruleBlock\"><h3>Battlefield combat</h3><p>Most ordinary captures only happen on the muddy Front Lines, in Camps, or on Gate squares. Infantry can fight in open Field. Spies convert in open Field.</p></div><div class=\"ruleBlock\"><h3>Front Lines</h3><p>Your own units never block your crossing. If an enemy occupies any Front Line row, your side cannot cross fully into the enemy half until that presence is removed. If both sides occupy the Front, both are blocked.</p></div><div class=\"ruleBlock\"><h3>Gates</h3><p>Intact enemy Gates block ordinary entry. Siege and Elephant can breach them permanently. Archer fire passes over Gates.</p></div><div class=\"ruleBlock\"><h3>Draw</h3><p>A draw occurs when neither side can ever breach the opposing Gate: its target Gate is still intact and that side has no surviving Siege or Elephant.</p></div>`;"""
-          assert old in text, 'rules block not found'
-          text=text.replace(old,new)
-          old="""function evalG(g){return withG(g,()=>{if(G.winner==='N')return 99999;if(G.winner==='S')return -99999;if(G.draw)return 0;let s=0;for(const p of G.pieces){let sign=p.side==='N'?1:-1;s+=sign*V[p.type]*40;let z=zone(p.r,p.c),enemy=SIDE[p.side].enemy;if(z.kind==='front')s+=sign*7;if(z.side===enemy&&z.kind==='outer')s+=sign*22;if(z.side===enemy&&z.kind==='inner')s+=sign*90}if(G.breached.S)s+=100;if(G.breached.N)s-=100;let n=sideState('N'),q=sideState('S');if(q.blocked)s+=20;if(n.blocked)s-=20;if(G.pressure.S)s+=140;if(G.pressure.N)s-=150;s+=(q.e-q.f)*22-(n.e-n.f)*24;return s})}"""
-          new="""function evalG(g){return withG(g,()=>{if(G.winner==='N')return 99999;if(G.winner==='S')return -99999;if(G.draw)return 0;let s=0;for(const p of G.pieces){let sign=p.side==='N'?1:-1,z=zone(p.r,p.c),enemy=SIDE[p.side].enemy;s+=sign*V[p.type]*40;if(p.type!=='commander'&&p.type!=='guard'){let progress=p.side==='N'?p.r:28-p.r;s+=sign*progress*3;if(z.kind==='field')s+=sign*12;if(z.kind==='front')s+=sign*22}else if(z.kind==='front')s+=sign*7;if(z.side===enemy&&z.kind==='outer')s+=sign*22;if(z.side===enemy&&z.kind==='inner')s+=sign*90}if(G.breached.S)s+=100;if(G.breached.N)s-=100;let n=sideState('N'),q=sideState('S');if(q.blocked)s+=20;if(n.blocked)s-=20;if(G.pressure.S)s+=140;if(G.pressure.N)s-=150;s+=(q.e-q.f)*22-(n.e-n.f)*24;return s})}"""
-          assert old in text, 'eval block not found'
-          text=text.replace(old,new)
-          old="""function order(g,m,s){return withG(g,()=>{let p=G.pieces.find(x=>x.id===m.id),q=at(m.a.r,m.a.c),v=0;if(q&&(m.a.type==='capture'||m.a.type==='shoot'))v+=V[q.type]*30;if(m.a.type==='convert'&&q)v+=V[q.type]*42;if(m.a.type==='breach')v+=300;let z=zone(m.a.r,m.a.c);if(z.kind==='front')v+=15;if(z.side===SIDE[s].enemy&&z.kind==='inner')v+=180;return v})}"""
-          new="""function order(g,m,s){return withG(g,()=>{let p=G.pieces.find(x=>x.id===m.id),q=at(m.a.r,m.a.c),v=0;if(!p)return v;if(q&&(m.a.type==='capture'||m.a.type==='shoot'))v+=V[q.type]*30;if(m.a.type==='convert'&&q)v+=V[q.type]*42;if(m.a.type==='breach')v+=300;let from=zone(p.r,p.c),z=zone(m.a.r,m.a.c),forward=(m.a.r-p.r)*SIDE[s].dir;if(p.type!=='commander'&&p.type!=='guard')v+=forward*18;if(camp(from.kind)&&from.side===s&&z.kind==='gate'&&z.side===s)v+=90;if(from.kind==='gate'&&from.side===s&&(z.kind==='field'||z.kind==='front'))v+=260;if(z.kind==='field')v+=18;if(z.kind==='front')v+=35;if(z.side===SIDE[s].enemy&&z.kind==='inner')v+=180;let homeThreat=G.breached[s]||sideState(s).pressure||G.pieces.some(x=>x.side!==s&&zone(x.r,x.c).side===s);if((p.type==='commander'||p.type==='guard')&&!homeThreat)v-=220;return v})}"""
-          assert old in text, 'order block not found'
-          text=text.replace(old,new)
-          old="""function aiPick(){let root=clone(G),nm=moves('N',root);if(!nm.length)return null;nm=nm.map(m=>[m,order(root,m,'N')]).sort((a,b)=>b[1]-a[1]).slice(0,28);let scored=[];for(const [m] of nm){let a=sim(root,m,'S');if(a.winner==='N'){scored.push([m,99999]);continue}let replies=moves('S',a).map(x=>[x,order(a,x,'S')]).sort((x,y)=>y[1]-x[1]).slice(0,18),worst=evalG(a);if(replies.length){worst=Infinity;for(const [r] of replies)worst=Math.min(worst,evalG(sim(a,r,'N')))}scored.push([m,worst])}scored.sort((a,b)=>b[1]-a[1]);let best=scored[0][1],near=scored.filter(x=>best-x[1]<=12).slice(0,3);let r=Math.random();return(r<.76?near[0]:r<.94?(near[1]||near[0]):(near[2]||near[1]||near[0]))[0]}"""
-          new="""function aiPick(){let root=clone(G),nm=moves('N',root);if(!nm.length)return null;let gateExit=withG(root,()=>nm.filter(m=>{let p=G.pieces.find(x=>x.id===m.id),to=zone(m.a.r,m.a.c);return p&&p.r===5&&p.c===4&&zone(p.r,p.c).side==='N'&&(to.kind==='field'||to.kind==='front')}));if(gateExit.length)nm=gateExit;else{let threatened=withG(root,()=>G.breached.N||sideState('N').pressure||G.pieces.some(x=>x.side==='S'&&zone(x.r,x.c).side==='N'));if(!threatened){let armyMoves=withG(root,()=>nm.filter(m=>{let p=G.pieces.find(x=>x.id===m.id);return p&&p.type!=='commander'&&p.type!=='guard'}));if(armyMoves.length)nm=armyMoves}}nm=nm.map(m=>[m,order(root,m,'N')]).sort((a,b)=>b[1]-a[1]).slice(0,28);let scored=[];for(const [m] of nm){let a=sim(root,m,'S');if(a.winner==='N'){scored.push([m,99999]);continue}let replies=moves('S',a).map(x=>[x,order(a,x,'S')]).sort((x,y)=>y[1]-x[1]).slice(0,18),worst=evalG(a);if(replies.length){worst=Infinity;for(const [r] of replies)worst=Math.min(worst,evalG(sim(a,r,'N')))}scored.push([m,worst])}scored.sort((a,b)=>b[1]-a[1]);let best=scored[0][1],near=scored.filter(x=>best-x[1]<=10).slice(0,3);let r=Math.random();return(r<.82?near[0]:r<.96?(near[1]||near[0]):(near[2]||near[1]||near[0]))[0]}"""
-          assert old in text, 'AI block not found'
-          text=text.replace(old,new)
+          text=text.replace('Battlefield Chess v0.16','Battlefield Chess v0.17')
+          text=text.replace('01:30.0','02:00.0')
+          text=text.replace('const LIMIT_MS=90000', 'const LIMIT_MS=120000')
+          text=text.replace('Win before 1:30.', 'Win before 2:00.')
+          text=text.replace('v0.16 — 90 seconds.', 'v0.17 — 120 seconds.')
           p.write_text(text)
           sw=Path('sw.js')
-          s=sw.read_text().replace("const CACHE='bfchess-v015';","const CACHE='bfchess-v016';")
+          s=sw.read_text().replace("const CACHE='bfchess-v016';","const CACHE='bfchess-v017';")
           sw.write_text(s)
           PY
-      - name: Commit patch
+      - name: Commit final v0.17
         shell: bash
         run: |
           git config user.name "VofVs"
           git config user.email "vynnilucien@gmail.com"
+          git rm .github/workflows/patch-v016.yml
           git add index.html sw.js
-          git commit -m "BFChess v0.16: aggressive North AI and 3-piece cap"
+          git commit -m "BFChess v0.17: two-minute matches"
           git push origin main
